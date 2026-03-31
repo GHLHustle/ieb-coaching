@@ -199,7 +199,7 @@ export function ClientCallSummaries() {
                             {rev.summary && (
                               <p className="text-sm text-gray-700 mb-3">{rev.summary}</p>
                             )}
-                            <div className="flex items-center gap-4 flex-wrap">
+                            <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
                               {rev.progress_score && (
                                 <div className="flex items-center gap-1.5">
                                   <TrendingUp className="w-3.5 h-3.5 text-green-500" />
