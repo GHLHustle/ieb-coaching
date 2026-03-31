@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Slider } from '@/components/ui/slider'
-import { Badge } from '@/components/ui/badge'
-import { CheckCircle2, PenSquare } from 'lucide-react'
-import { DIVISIONS, getWeekStartDate, formatDate, cn } from '@/lib/utils'
+import { Slider, getGradientColor } from '@/components/ui/slider'
+import { CheckCircle2 } from 'lucide-react'
+import { DIVISIONS, getWeekStartDate, cn } from '@/lib/utils'
 
 export function ClientCheckIn() {
   const { user } = useAuth()
@@ -35,7 +34,6 @@ export function ClientCheckIn() {
     if (clientData) {
       setClient(clientData)
 
-      // Check if already submitted this week
       const { data: existing } = await supabase
         .from('confidence_checkins')
         .select('*')
@@ -99,13 +97,18 @@ export function ClientCheckIn() {
 
             <div className="grid grid-cols-3 gap-4 text-center">
               {[
-                { label: 'Services', score: data.services_score, color: 'text-division-services' },
-                { label: 'Operations', score: data.operations_score, color: 'text-division-operations' },
-                { label: 'Growth', score: data.growth_score, color: 'text-division-growth' },
+                { label: 'Services', score: data.services_score },
+                { label: 'Operations', score: data.operations_score },
+                { label: 'Growth', score: data.growth_score },
               ].map(item => (
                 <div key={item.label}>
                   <div className="text-xs text-gray-500">{item.label}</div>
-                  <div className={cn("text-3xl font-bold", item.color)}>{item.score}</div>
+                  <div
+                    className="text-3xl font-bold"
+                    style={{ color: getGradientColor(item.score) }}
+                  >
+                    {item.score}
+                  </div>
                 </div>
               ))}
             </div>
@@ -131,7 +134,12 @@ export function ClientCheckIn() {
                   <div className={cn("w-3 h-3 rounded-full", div.color)} />
                   <span className="font-semibold text-gray-900">{div.label}</span>
                 </div>
-                <span className="text-2xl font-bold text-gray-900">{scores[div.key]}</span>
+                <span
+                  className="text-2xl font-bold transition-colors duration-200"
+                  style={{ color: getGradientColor(scores[div.key]) }}
+                >
+                  {scores[div.key]}
+                </span>
               </div>
 
               <Slider
@@ -140,14 +148,19 @@ export function ClientCheckIn() {
                 min={0}
                 max={10}
                 step={1}
-                trackColor={div.color}
+                useGradient={true}
                 className="mb-3"
               />
 
               <div className="flex justify-between text-xs text-gray-400">
-                <span>Struggling</span>
-                <span className="font-medium text-gray-600">{scoreLabel(scores[div.key])}</span>
-                <span>Crushing It</span>
+                <span className="text-red-400">Struggling</span>
+                <span
+                  className="font-medium transition-colors duration-200"
+                  style={{ color: getGradientColor(scores[div.key]) }}
+                >
+                  {scoreLabel(scores[div.key])}
+                </span>
+                <span className="text-green-500">Crushing It</span>
               </div>
             </CardContent>
           </Card>
