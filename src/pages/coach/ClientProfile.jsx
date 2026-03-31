@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import {
   ArrowLeft, FileText, Map, TrendingUp, MessageSquare, Plus, Pin, PinOff,
   Eye, EyeOff, Send, Clock, CheckCircle2, Circle, Loader2, FolderOpen,
-  Calendar, ListChecks, ExternalLink, Video, ChevronDown, ChevronUp, Brain
+  Calendar, ListChecks, ExternalLink, Video, ChevronDown, ChevronUp, Brain, Sparkles
 } from 'lucide-react'
 import { DIVISIONS, getDivisionColor, formatDate, getWeekStartDate } from '@/lib/utils'
 import { cn } from '@/lib/utils'
@@ -50,7 +50,7 @@ export function ClientProfile() {
   // Call logs state
   const [callLogs, setCallLogs] = useState([])
   const [showAddCall, setShowAddCall] = useState(false)
-  const [newCall, setNewCall] = useState({ call_date: '', duration_minutes: '', summary: '', call_type: 'coaching', google_doc_url: '', meet_url: '' })
+  const [newCall, setNewCall] = useState({ call_date: '', duration_minutes: '', summary: '', call_type: 'coaching', google_doc_url: '', meet_url: '', transcript: '' })
   const [savingCall, setSavingCall] = useState(false)
   const [expandedCall, setExpandedCall] = useState(null)
 
@@ -260,6 +260,7 @@ export function ClientProfile() {
         call_type: newCall.call_type,
         google_doc_url: newCall.google_doc_url || null,
         meet_url: newCall.meet_url || null,
+        transcript: newCall.transcript || null,
       })
       .select()
       .single()
@@ -267,7 +268,7 @@ export function ClientProfile() {
     if (!error) {
       setCallLogs(prev => [data, ...prev])
       setShowAddCall(false)
-      setNewCall({ call_date: '', duration_minutes: '', summary: '', call_type: 'coaching', google_doc_url: '', meet_url: '' })
+      setNewCall({ call_date: '', duration_minutes: '', summary: '', call_type: 'coaching', google_doc_url: '', meet_url: '', transcript: '' })
     }
     setSavingCall(false)
   }
@@ -871,10 +872,15 @@ export function ClientProfile() {
                             <p className="text-sm text-gray-400 italic">No summary or action items recorded for this call.</p>
                           )}
                           {/* AI Review Button */}
-                          <div className="mt-3 pt-3 border-t border-gray-100">
+                          <div className="mt-3 pt-3 border-t border-gray-100 flex gap-2">
                             <Link to={`/coach/clients/${clientId}/ai-review?call=${call.id}`}>
                               <Button variant="outline" size="sm" className="text-purple-600 border-purple-200 hover:bg-purple-50 gap-2">
                                 <Brain className="w-4 h-4" /> AI Review
+                              </Button>
+                            </Link>
+                            <Link to={`/coach/clients/${clientId}/insights`}>
+                              <Button variant="outline" size="sm" className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 gap-2">
+                                <Sparkles className="w-4 h-4" /> Coaching Insights
                               </Button>
                             </Link>
                           </div>
@@ -942,6 +948,10 @@ export function ClientProfile() {
                   </div>
                 </div>
                 <div className="space-y-2">
+                  <Label>Call Notes / Transcript</Label>
+                  <Textarea rows={5} placeholder="Paste your Google Doc notes or call transcript here... This content will be analyzed by AI." value={newCall.transcript} onChange={e => setNewCall(p => ({ ...p, transcript: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
                   <Label>Summary / Notes</Label>
                   <Textarea rows={5} placeholder="What was discussed? Key takeaways, decisions made, next steps..." value={newCall.summary} onChange={e => setNewCall(p => ({ ...p, summary: e.target.value }))} />
                 </div>
@@ -966,6 +976,11 @@ export function ClientProfile() {
             <Link to={`/coach/clients/${clientId}/report`}>
               <Button variant="outline" size="sm" className="gap-2">
                 <TrendingUp className="w-4 h-4" /> Progress Report
+              </Button>
+            </Link>
+            <Link to={`/coach/clients/${clientId}/insights`}>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Sparkles className="w-4 h-4" /> Coaching Insights
               </Button>
             </Link>
           </div>

@@ -24,6 +24,7 @@ import { Resources } from '@/pages/coach/Resources'
 import { AICallReview } from '@/pages/coach/AICallReview'
 import { ClientIntakeForm } from '@/pages/client/ClientIntakeForm'
 import { ClientResources } from '@/pages/client/ClientResources'
+import { CoachingInsights } from '@/pages/coach/CoachingInsights'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -60,6 +61,7 @@ function AppRoutes() {
         <Route path="clients/:clientId/report" element={<ProgressReport />} />
         <Route path="resources" element={<Resources />} />
         <Route path="clients/:clientId/ai-review" element={<AICallReview />} />
+        <Route path="clients/:clientId/insights" element={<CoachingInsights />} />
       </Route>
 
       {/* Client Routes */}
