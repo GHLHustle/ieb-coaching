@@ -21,6 +21,7 @@ import { ClientNotes } from '@/pages/client/ClientNotes'
 import { ClientIntake } from '@/pages/coach/ClientIntake'
 import { ProgressReport } from '@/pages/coach/ProgressReport'
 import { Resources } from '@/pages/coach/Resources'
+import { AICallReview } from '@/pages/coach/AICallReview'
 import { ClientIntakeForm } from '@/pages/client/ClientIntakeForm'
 import { ClientResources } from '@/pages/client/ClientResources'
 
@@ -58,6 +59,7 @@ function AppRoutes() {
         <Route path="clients/:clientId/intake" element={<ClientIntake />} />
         <Route path="clients/:clientId/report" element={<ProgressReport />} />
         <Route path="resources" element={<Resources />} />
+        <Route path="clients/:clientId/ai-review" element={<AICallReview />} />
       </Route>
 
       {/* Client Routes */}

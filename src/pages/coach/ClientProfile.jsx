@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import {
   ArrowLeft, FileText, Map, TrendingUp, MessageSquare, Plus, Pin, PinOff,
   Eye, EyeOff, Send, Clock, CheckCircle2, Circle, Loader2, FolderOpen,
-  Calendar, ListChecks, ExternalLink, Video, ChevronDown, ChevronUp
+  Calendar, ListChecks, ExternalLink, Video, ChevronDown, ChevronUp, Brain
 } from 'lucide-react'
 import { DIVISIONS, getDivisionColor, formatDate, getWeekStartDate } from '@/lib/utils'
 import { cn } from '@/lib/utils'
@@ -870,6 +870,14 @@ export function ClientProfile() {
                           {!call.summary && callActions.length === 0 && (
                             <p className="text-sm text-gray-400 italic">No summary or action items recorded for this call.</p>
                           )}
+                          {/* AI Review Button */}
+                          <div className="mt-3 pt-3 border-t border-gray-100">
+                            <Link to={`/coach/clients/${clientId}/ai-review?call=${call.id}`}>
+                              <Button variant="outline" size="sm" className="text-purple-600 border-purple-200 hover:bg-purple-50 gap-2">
+                                <Brain className="w-4 h-4" /> AI Review
+                              </Button>
+                            </Link>
+                          </div>
                         </div>
                       )}
                     </CardContent>

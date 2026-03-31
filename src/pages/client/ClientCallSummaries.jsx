@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Phone, Video, Clock, ChevronDown, ChevronUp, ListChecks, CheckCircle2, Circle } from 'lucide-react'
+import { Phone, Video, Clock, ChevronDown, ChevronUp, ListChecks, CheckCircle2, Circle, Brain, TrendingUp, Target, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 function formatDate(dateStr) {
@@ -20,6 +20,7 @@ export function ClientCallSummaries() {
   const [loading, setLoading] = useState(true)
   const [expandedCall, setExpandedCall] = useState(null)
   const [clientId, setClientId] = useState(null)
+  const [aiReviews, setAiReviews] = useState({})
 
   useEffect(() => { loadData() }, [user])
 
@@ -55,8 +56,21 @@ export function ClientCallSummaries() {
 
     setCallLogs(callRes.data || [])
     setActionItems(actionRes.data || [])
-    // Auto-expand the most recent call
+
+    // Load AI reviews for all calls
     if (callRes.data?.length > 0) {
+      const callIds = callRes.data.map(c => c.id)
+      const { data: reviewsData } = await supabase
+        .from('ai_call_reviews')
+        .select('call_log_id, summary, progress_score, coaching_quality_score, engagement_score, client_sentiment, extracted_action_items, key_moments')
+        .in('call_log_id', callIds)
+
+      if (reviewsData) {
+        const map = {}
+        reviewsData.forEach(r => { map[r.call_log_id] = r })
+        setAiReviews(map)
+      }
+
       setExpandedCall(callRes.data[0].id)
     }
     setLoading(false)
@@ -171,6 +185,56 @@ export function ClientCallSummaries() {
                       ) : (
                         <p className="text-sm text-gray-400 italic">No summary available for this session yet.</p>
                       )}
+
+                      {/* AI Review Insights */}
+                      {aiReviews[call.id] && (() => {
+                        const rev = aiReviews[call.id]
+                        return (
+                          <div className="bg-purple-50/50 rounded-lg p-4 border border-purple-100">
+                            <div className="flex items-center gap-2 mb-3">
+                              <Brain className="w-4 h-4 text-purple-600" />
+                              <span className="text-xs font-semibold text-purple-700 uppercase tracking-wide">AI Insights</span>
+                              <Badge className="bg-purple-100 text-purple-600 text-xs">Gemini 3 Flash</Badge>
+                            </div>
+                            {rev.summary && (
+                              <p className="text-sm text-gray-700 mb-3">{rev.summary}</p>
+                            )}
+                            <div className="flex items-center gap-4 flex-wrap">
+                              {rev.progress_score && (
+                                <div className="flex items-center gap-1.5">
+                                  <TrendingUp className="w-3.5 h-3.5 text-green-500" />
+                                  <span className="text-xs text-gray-600">Progress: <span className="font-semibold">{rev.progress_score}/10</span></span>
+                                </div>
+                              )}
+                              {rev.engagement_score && (
+                                <div className="flex items-center gap-1.5">
+                                  <Sparkles className="w-3.5 h-3.5 text-purple-500" />
+                                  <span className="text-xs text-gray-600">Engagement: <span className="font-semibold">{rev.engagement_score}/10</span></span>
+                                </div>
+                              )}
+                              {rev.client_sentiment && (
+                                <Badge className={cn('text-xs',
+                                  rev.client_sentiment.includes('positive') ? 'bg-green-100 text-green-700' :
+                                  rev.client_sentiment.includes('negative') ? 'bg-orange-100 text-orange-700' :
+                                  'bg-gray-100 text-gray-600'
+                                )}>
+                                  {rev.client_sentiment.replace('_', ' ')}
+                                </Badge>
+                              )}
+                            </div>
+                            {rev.key_moments?.length > 0 && (
+                              <div className="mt-3 space-y-1">
+                                {rev.key_moments.slice(0, 2).map((m, i) => (
+                                  <div key={i} className="flex items-start gap-2">
+                                    <Target className="w-3.5 h-3.5 text-navy mt-0.5 shrink-0" />
+                                    <span className="text-xs text-gray-600">{m.description}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })()}
 
                       {callActions.length > 0 && (
                         <div>

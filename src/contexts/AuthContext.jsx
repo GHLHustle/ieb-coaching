@@ -53,7 +53,25 @@ export function AuthProvider({ children }) {
       .eq('id', userId)
       .single()
 
-    if (!error && data) setProfile(data)
+    if (!error && data) {
+      setProfile(data)
+      setLoading(false)
+      return
+    }
+
+    // Profile missing — create it (handles invite-before-migration case)
+    if (error?.code === 'PGRST116') {
+      const { data: newProfile, error: insertError } = await supabase
+        .from('profiles')
+        .insert({ id: userId, role: 'coach', full_name: '' })
+        .select()
+        .single()
+
+      if (!insertError && newProfile) {
+        setProfile(newProfile)
+      }
+    }
+
     setLoading(false)
   }
 
