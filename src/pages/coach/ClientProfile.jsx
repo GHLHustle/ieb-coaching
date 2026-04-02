@@ -67,6 +67,8 @@ export function ClientProfile() {
   const [editingDrive, setEditingDrive] = useState(false)
   const [driveUrl, setDriveUrl] = useState('')
   const [savingDrive, setSavingDrive] = useState(false)
+  const [syncingDrive, setSyncingDrive] = useState(false)
+  const [syncResult, setSyncResult] = useState(null)
 
   // GHL conversations
   const [ghlConversations, setGhlConversations] = useState([])
@@ -233,17 +235,65 @@ export function ClientProfile() {
     }
   }
 
+  function extractDriveFolderId(url) {
+    // Handles patterns like:
+    // https://drive.google.com/drive/folders/FOLDER_ID
+    // https://drive.google.com/drive/u/0/folders/FOLDER_ID?usp=sharing
+    const match = url.match(/\/folders\/([a-zA-Z0-9_-]+)/)
+    return match ? match[1] : null
+  }
+
   async function saveDriveUrl() {
     setSavingDrive(true)
+    const folderId = extractDriveFolderId(driveUrl)
     const { error } = await supabase
       .from('clients')
-      .update({ google_drive_url: driveUrl })
+      .update({
+        google_drive_url: driveUrl,
+        google_drive_folder_id: folderId,
+      })
       .eq('id', clientId)
     if (!error) {
-      setClient(prev => ({ ...prev, google_drive_url: driveUrl }))
+      setClient(prev => ({ ...prev, google_drive_url: driveUrl, google_drive_folder_id: folderId }))
       setEditingDrive(false)
+      setSyncResult(folderId ? { type: 'info', message: 'Folder linked! Use Sync Now to pull existing docs.' } : { type: 'warn', message: "Couldn't extract folder ID from that URL. Check it's a Drive folder link." })
     }
     setSavingDrive(false)
+  }
+
+  async function syncDriveNow() {
+    setSyncingDrive(true)
+    setSyncResult(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/drive-sync`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ client_id: clientId }),
+      })
+      const result = await res.json()
+      if (result.error) {
+        setSyncResult({ type: 'error', message: result.error })
+      } else {
+        const processed = result.total_processed || 0
+        setSyncResult({
+          type: 'success',
+          message: processed > 0
+            ? `Synced! Found ${processed} new call doc${processed !== 1 ? 's' : ''} — sessions and action items have been created.`
+            : 'Sync complete — no new docs found since last check.'
+        })
+        if (processed > 0) {
+          await Promise.all([loadCallLogs(), loadActionItems()])
+        }
+      }
+    } catch (err) {
+      setSyncResult({ type: 'error', message: String(err) })
+    }
+    setSyncingDrive(false)
   }
 
   async function saveCallLog(e) {
@@ -429,34 +479,77 @@ export function ClientProfile() {
             {client.email && ` · ${client.email}`}
           </p>
 
-          {/* Google Drive Link */}
-          <div className="mt-2 flex items-center gap-2">
-            <FolderOpen className="w-4 h-4 text-gray-400" />
+          {/* Google Drive Integration */}
+          <div className="mt-3 border border-gray-100 rounded-lg p-3 bg-gray-50">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <FolderOpen className="w-4 h-4 text-blue-500" />
+                <span className="text-sm font-medium text-gray-700">Google Drive Sync</span>
+                {client.google_drive_folder_id && (
+                  <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Connected</span>
+                )}
+              </div>
+              {client.google_drive_folder_id && !editingDrive && (
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setEditingDrive(true)} className="text-xs text-gray-400 hover:text-gray-600">Edit</button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs gap-1"
+                    onClick={syncDriveNow}
+                    disabled={syncingDrive}
+                  >
+                    {syncingDrive ? <><Loader2 className="w-3 h-3 animate-spin" /> Syncing...</> : <>↻ Sync Now</>}
+                  </Button>
+                </div>
+              )}
+            </div>
+
             {client.google_drive_url && !editingDrive ? (
               <div className="flex items-center gap-2">
                 <a href={client.google_drive_url} target="_blank" rel="noopener noreferrer"
                    className="text-sm text-blue-600 hover:underline flex items-center gap-1">
-                  Client Drive Folder <ExternalLink className="w-3 h-3" />
+                  Open Client Folder <ExternalLink className="w-3 h-3" />
                 </a>
-                <button onClick={() => setEditingDrive(true)} className="text-xs text-gray-400 hover:text-gray-600">Edit</button>
-              </div>
-            ) : editingDrive || !client.google_drive_url ? (
-              <div className="flex items-center gap-2">
-                <Input
-                  placeholder="Paste Google Drive folder URL..."
-                  value={driveUrl}
-                  onChange={e => setDriveUrl(e.target.value)}
-                  className="h-7 text-sm w-80"
-                />
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={saveDriveUrl} disabled={savingDrive}>
-                  {savingDrive ? '...' : 'Save'}
-                </Button>
-                {editingDrive && (
-                  <button onClick={() => { setEditingDrive(false); setDriveUrl(client.google_drive_url || '') }}
-                          className="text-xs text-gray-400">Cancel</button>
+                {client.drive_last_synced_at && (
+                  <span className="text-xs text-gray-400">
+                    Last sync: {new Date(client.drive_last_synced_at).toLocaleDateString()}
+                  </span>
                 )}
               </div>
-            ) : null}
+            ) : (
+              <div className="space-y-2">
+                <p className="text-xs text-gray-500">
+                  Paste this client's Google Drive folder URL. Share that folder with your service account email, and new call docs will auto-sync.
+                </p>
+                <div className="flex items-center gap-2">
+                  <Input
+                    placeholder="https://drive.google.com/drive/folders/..."
+                    value={driveUrl}
+                    onChange={e => setDriveUrl(e.target.value)}
+                    className="h-7 text-sm"
+                  />
+                  <Button size="sm" variant="outline" className="h-7 text-xs whitespace-nowrap" onClick={saveDriveUrl} disabled={savingDrive}>
+                    {savingDrive ? '...' : 'Save & Link'}
+                  </Button>
+                  {editingDrive && (
+                    <button onClick={() => { setEditingDrive(false); setDriveUrl(client.google_drive_url || '') }}
+                            className="text-xs text-gray-400">Cancel</button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {syncResult && (
+              <div className={`mt-2 text-xs px-2 py-1 rounded ${
+                syncResult.type === 'success' ? 'bg-green-50 text-green-700' :
+                syncResult.type === 'error' ? 'bg-red-50 text-red-700' :
+                syncResult.type === 'info' ? 'bg-blue-50 text-blue-700' :
+                'bg-amber-50 text-amber-700'
+              }`}>
+                {syncResult.message}
+              </div>
+            )}
           </div>
         </div>
       </div>
