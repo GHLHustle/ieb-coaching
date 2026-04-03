@@ -69,9 +69,19 @@ export function AuthProvider({ children }) {
 
       if (!insertError && newProfile) {
         setProfile(newProfile)
+        setLoading(false)
+        return
       }
+      // Profile create failed — sign out so we don't get stuck in a redirect loop
+      console.error('Could not create profile, signing out', insertError)
+      await supabase.auth.signOut()
+      setUser(null)
+      setProfile(null)
+      setLoading(false)
+      return
     }
 
+    // Some other fetch error — still clear loading
     setLoading(false)
   }
 

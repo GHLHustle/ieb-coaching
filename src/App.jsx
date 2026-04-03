@@ -45,7 +45,7 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/login" element={user ? <Navigate to={profile?.role === 'coach' ? '/coach' : '/client'} /> : <LoginPage />} />
+      <Route path="/login" element={user && profile ? <Navigate to={profile.role === 'coach' ? '/coach' : '/client'} replace /> : <LoginPage />} />
 
       {/* Coach Routes */}
       <Route path="/coach" element={<ProtectedRoute requiredRole="coach"><CoachLayout /></ProtectedRoute>}>

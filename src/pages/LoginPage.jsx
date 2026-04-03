@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
@@ -13,23 +13,25 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const { signIn } = useAuth()
+  const { signIn, user, profile } = useAuth()
   const navigate = useNavigate()
+
+  // Once auth context has user + profile, navigate to the right place
+  useEffect(() => {
+    if (user && profile) {
+      navigate(profile.role === 'coach' ? '/coach' : '/client', { replace: true })
+    }
+  }, [user, profile])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     setLoading(true)
     try {
-      const { user } = await signIn(email, password)
-      // Profile is fetched by AuthContext, redirect based on role
-      // Small delay to let profile load
-      setTimeout(() => {
-        navigate(0) // Refresh to let auth context redirect
-      }, 500)
+      await signIn(email, password)
+      // Navigation is handled by the useEffect above once profile loads
     } catch (err) {
       setError(err.message || 'Invalid email or password. Try again.')
-    } finally {
       setLoading(false)
     }
   }
