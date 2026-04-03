@@ -70,6 +70,11 @@ export function ClientProfile() {
   const [syncingDrive, setSyncingDrive] = useState(false)
   const [syncResult, setSyncResult] = useState(null)
 
+  // Client invite/reset
+  const [inviting, setInviting] = useState(false)
+  const [resettingPw, setResettingPw] = useState(false)
+  const [inviteResult, setInviteResult] = useState(null)
+
   // GHL conversations
   const [ghlConversations, setGhlConversations] = useState([])
   const [ghlConvoLoading, setGhlConvoLoading] = useState(false)
@@ -296,6 +301,61 @@ export function ClientProfile() {
     setSyncingDrive(false)
   }
 
+  async function inviteClient(sendVia = 'email') {
+    setInviting(true)
+    setInviteResult(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite-client`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ action: 'invite', client_id: clientId, send_via: sendVia }),
+      })
+      const result = await res.json()
+      if (result.error) {
+        setInviteResult({ type: 'error', message: result.error })
+      } else {
+        setInviteResult({ type: 'success', message: result.message, link: result.magic_link })
+        setClient(prev => ({ ...prev, user_id: result.user_id }))
+      }
+    } catch (err) {
+      setInviteResult({ type: 'error', message: String(err) })
+    } finally {
+      setInviting(false)
+    }
+  }
+
+  async function resetClientPassword(sendVia = 'email') {
+    setResettingPw(true)
+    setInviteResult(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite-client`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ action: 'reset', client_id: clientId, send_via: sendVia }),
+      })
+      const result = await res.json()
+      if (result.error) {
+        setInviteResult({ type: 'error', message: result.error })
+      } else {
+        setInviteResult({ type: 'success', message: result.message, link: result.reset_link })
+      }
+    } catch (err) {
+      setInviteResult({ type: 'error', message: String(err) })
+    } finally {
+      setResettingPw(false)
+    }
+  }
+
   async function saveCallLog(e) {
     e.preventDefault()
     setSavingCall(true)
@@ -478,6 +538,36 @@ export function ClientProfile() {
             Started {formatDate(client.start_date)}
             {client.email && ` · ${client.email}`}
           </p>
+
+          {/* Client Portal Access */}
+          <div className="mt-2 flex items-center gap-2 flex-wrap">
+            {!client.user_id ? (
+              <>
+                <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => inviteClient(client.ghl_contact_id ? 'email' : 'link_only')} disabled={inviting}>
+                  {inviting ? <><Loader2 className="w-3 h-3 animate-spin" /> Sending...</> : <>📨 Send Invite</>}
+                </Button>
+                <span className="text-xs text-amber-600">No portal account yet</span>
+              </>
+            ) : (
+              <>
+                <span className="text-xs text-green-600 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Has portal access</span>
+                <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => resetClientPassword(client.ghl_contact_id ? 'email' : 'link_only')} disabled={resettingPw}>
+                  {resettingPw ? <><Loader2 className="w-3 h-3 animate-spin" /> Sending...</> : 'Reset Password'}
+                </Button>
+              </>
+            )}
+          </div>
+          {inviteResult && (
+            <div className={`mt-2 text-xs px-3 py-2 rounded ${inviteResult.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+              <p>{inviteResult.message}</p>
+              {inviteResult.link && inviteResult.type === 'success' && (
+                <div className="mt-1 flex items-center gap-2">
+                  <input readOnly value={inviteResult.link} className="text-xs bg-white border rounded px-2 py-1 flex-1 font-mono" />
+                  <button onClick={() => { navigator.clipboard.writeText(inviteResult.link); }} className="text-xs text-blue-600 hover:underline whitespace-nowrap">Copy Link</button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Google Drive Integration */}
           <div className="mt-3 border border-gray-100 rounded-lg p-3 bg-gray-50">

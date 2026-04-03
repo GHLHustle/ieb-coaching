@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Save, Key, Globe, User, CheckCircle2, AlertCircle, Loader2, ExternalLink, Calendar } from 'lucide-react'
+import { Save, Key, Globe, User, CheckCircle2, AlertCircle, Loader2, ExternalLink, Calendar, Lock } from 'lucide-react'
 
 const TIMEZONES = [
   'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
@@ -29,6 +29,11 @@ export function Settings() {
   const [profileForm, setProfileForm] = useState({ full_name: '' })
   const [ghlStatus, setGhlStatus] = useState(null) // 'connected' | 'error' | null
   const [ghlError, setGhlError] = useState('')
+
+  // Password change
+  const [passwordForm, setPasswordForm] = useState({ newPassword: '', confirmPassword: '' })
+  const [changingPassword, setChangingPassword] = useState(false)
+  const [passwordMsg, setPasswordMsg] = useState(null) // { type: 'success'|'error', text: '' }
 
   useEffect(() => { loadSettings() }, [user])
 
@@ -130,6 +135,30 @@ export function Settings() {
     }
   }
 
+  async function changePassword() {
+    if (!passwordForm.newPassword || passwordForm.newPassword.length < 8) {
+      setPasswordMsg({ type: 'error', text: 'Password must be at least 8 characters.' })
+      return
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordMsg({ type: 'error', text: 'Passwords do not match.' })
+      return
+    }
+    setChangingPassword(true)
+    setPasswordMsg(null)
+    try {
+      const { error } = await supabase.auth.updateUser({ password: passwordForm.newPassword })
+      if (error) throw error
+      setPasswordMsg({ type: 'success', text: 'Password updated successfully!' })
+      setPasswordForm({ newPassword: '', confirmPassword: '' })
+      setTimeout(() => setPasswordMsg(null), 5000)
+    } catch (err) {
+      setPasswordMsg({ type: 'error', text: err.message || 'Failed to update password.' })
+    } finally {
+      setChangingPassword(false)
+    }
+  }
+
   if (loading) {
     return <div className="flex items-center justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-navy"></div></div>
   }
@@ -164,6 +193,44 @@ export function Settings() {
               <Input value={profile?.email || ''} disabled className="bg-gray-50" />
               <p className="text-xs text-gray-400">Email cannot be changed here.</p>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Change Password */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Lock className="w-5 h-5 text-gray-400" />
+              <CardTitle className="text-base">Change Password</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>New Password</Label>
+              <Input
+                type="password"
+                value={passwordForm.newPassword}
+                onChange={e => setPasswordForm(p => ({ ...p, newPassword: e.target.value }))}
+                placeholder="Minimum 8 characters"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Confirm Password</Label>
+              <Input
+                type="password"
+                value={passwordForm.confirmPassword}
+                onChange={e => setPasswordForm(p => ({ ...p, confirmPassword: e.target.value }))}
+                placeholder="Type it again"
+              />
+            </div>
+            {passwordMsg && (
+              <div className={`text-sm px-3 py-2 rounded ${passwordMsg.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                {passwordMsg.text}
+              </div>
+            )}
+            <Button type="button" variant="outline" size="sm" onClick={changePassword} disabled={changingPassword}>
+              {changingPassword ? <><Loader2 className="w-3 h-3 mr-2 animate-spin" /> Updating...</> : 'Update Password'}
+            </Button>
           </CardContent>
         </Card>
 
