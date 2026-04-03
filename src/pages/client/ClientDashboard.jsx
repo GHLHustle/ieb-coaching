@@ -22,43 +22,49 @@ export function ClientDashboard() {
   }, [user])
 
   async function loadData() {
-    const { data: clientData } = await supabase
-      .from('clients')
-      .select('*')
-      .eq('user_id', user.id)
-      .single()
+    setLoading(true)
+    try {
+      const { data: clientData } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('user_id', user.id)
+        .single()
 
-    if (clientData) {
-      setClient(clientData)
+      if (clientData) {
+        setClient(clientData)
 
-      // Load milestones, checkins, and action items in parallel
-      const [msRes, checkinRes, actionRes] = await Promise.all([
-        supabase
-          .from('milestones')
-          .select('*')
-          .eq('client_id', clientData.id)
-          .order('division')
-          .order('sort_order'),
-        supabase
-          .from('confidence_checkins')
-          .select('*')
-          .eq('client_id', clientData.id)
-          .order('submitted_at', { ascending: false })
-          .limit(1),
-        supabase
-          .from('action_items')
-          .select('*, call_logs(call_date, call_type)')
-          .eq('client_id', clientData.id)
-          .eq('is_visible_to_client', true)
-          .order('status', { ascending: true })
-          .order('due_date', { ascending: true })
-      ])
+        // Load milestones, checkins, and action items in parallel
+        const [msRes, checkinRes, actionRes] = await Promise.all([
+          supabase
+            .from('milestones')
+            .select('*')
+            .eq('client_id', clientData.id)
+            .order('division')
+            .order('sort_order'),
+          supabase
+            .from('confidence_checkins')
+            .select('*')
+            .eq('client_id', clientData.id)
+            .order('submitted_at', { ascending: false })
+            .limit(1),
+          supabase
+            .from('action_items')
+            .select('*, call_logs(call_date, call_type)')
+            .eq('client_id', clientData.id)
+            .eq('is_visible_to_client', true)
+            .order('status', { ascending: true })
+            .order('due_date', { ascending: true })
+        ])
 
-      setMilestones(msRes.data || [])
-      setLastCheckin(checkinRes.data?.[0] || null)
-      setActionItems(actionRes.data || [])
+        setMilestones(msRes.data || [])
+        setLastCheckin(checkinRes.data?.[0] || null)
+        setActionItems(actionRes.data || [])
+      }
+    } catch (err) {
+      console.error('Load data error:', err)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   if (loading) {

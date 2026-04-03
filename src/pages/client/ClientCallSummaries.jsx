@@ -25,55 +25,60 @@ export function ClientCallSummaries() {
   useEffect(() => { loadData() }, [user])
 
   async function loadData() {
-    // First get this user's client record
-    const { data: clientData } = await supabase
-      .from('clients')
-      .select('id')
-      .eq('user_id', user.id)
-      .single()
+    setLoading(true)
+    try {
+      // First get this user's client record
+      const { data: clientData } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('user_id', user.id)
+        .single()
 
-    if (!clientData) {
-      setLoading(false)
-      return
-    }
-
-    setClientId(clientData.id)
-
-    // Load call logs and action items in parallel
-    const [callRes, actionRes] = await Promise.all([
-      supabase
-        .from('call_logs')
-        .select('*')
-        .eq('client_id', clientData.id)
-        .order('call_date', { ascending: false }),
-      supabase
-        .from('action_items')
-        .select('*')
-        .eq('client_id', clientData.id)
-        .eq('is_visible_to_client', true)
-        .order('due_date', { ascending: true })
-    ])
-
-    setCallLogs(callRes.data || [])
-    setActionItems(actionRes.data || [])
-
-    // Load AI reviews for all calls
-    if (callRes.data?.length > 0) {
-      const callIds = callRes.data.map(c => c.id)
-      const { data: reviewsData } = await supabase
-        .from('ai_call_reviews')
-        .select('call_log_id, summary, progress_score, coaching_quality_score, engagement_score, client_sentiment, extracted_action_items, key_moments')
-        .in('call_log_id', callIds)
-
-      if (reviewsData) {
-        const map = {}
-        reviewsData.forEach(r => { map[r.call_log_id] = r })
-        setAiReviews(map)
+      if (!clientData) {
+        return
       }
 
-      setExpandedCall(callRes.data[0].id)
+      setClientId(clientData.id)
+
+      // Load call logs and action items in parallel
+      const [callRes, actionRes] = await Promise.all([
+        supabase
+          .from('call_logs')
+          .select('*')
+          .eq('client_id', clientData.id)
+          .order('call_date', { ascending: false }),
+        supabase
+          .from('action_items')
+          .select('*')
+          .eq('client_id', clientData.id)
+          .eq('is_visible_to_client', true)
+          .order('due_date', { ascending: true })
+      ])
+
+      setCallLogs(callRes.data || [])
+      setActionItems(actionRes.data || [])
+
+      // Load AI reviews for all calls
+      if (callRes.data?.length > 0) {
+        const callIds = callRes.data.map(c => c.id)
+        const { data: reviewsData } = await supabase
+          .from('ai_call_reviews')
+          .select('call_log_id, summary, progress_score, coaching_quality_score, engagement_score, client_sentiment, extracted_action_items, key_moments')
+          .in('call_log_id', callIds)
+
+        if (reviewsData) {
+          const map = {}
+          reviewsData.forEach(r => { map[r.call_log_id] = r })
+          setAiReviews(map)
+        }
+
+        setExpandedCall(callRes.data[0].id)
+      }
+    } catch (err) {
+      console.error('Load data error:', err)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   if (loading) {

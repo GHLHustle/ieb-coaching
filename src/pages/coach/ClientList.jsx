@@ -27,15 +27,20 @@ export function ClientList() {
   }, [user])
 
   async function loadClients() {
-    const { data, error } = await supabase
-      .from('clients')
-      .select('*')
-      .eq('coach_id', user.id)
-      .order('is_active', { ascending: false })
-      .order('first_name')
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('coach_id', user.id)
+        .order('is_active', { ascending: false })
+        .order('first_name')
 
-    if (!error) setClients(data || [])
-    setLoading(false)
+      if (!error) setClients(data || [])
+    } catch (err) {
+      console.error('Load clients error:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function addClient(e) {

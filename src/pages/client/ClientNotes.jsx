@@ -20,51 +20,57 @@ export function ClientNotes() {
   }, [user])
 
   async function loadNotes() {
-    const { data: client } = await supabase
-      .from('clients')
-      .select('id')
-      .eq('user_id', user.id)
-      .single()
+    setLoading(true)
+    try {
+      const { data: client } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('user_id', user.id)
+        .single()
 
-    if (client) {
-      // Load coach notes and call logs in parallel
-      const [notesRes, callRes] = await Promise.all([
-        supabase
-          .from('notes')
-          .select('*')
-          .eq('client_id', client.id)
-          .eq('is_shared', true)
-          .order('is_pinned', { ascending: false })
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('call_logs')
-          .select('*')
-          .eq('client_id', client.id)
-          .order('call_date', { ascending: false })
-      ])
+      if (client) {
+        // Load coach notes and call logs in parallel
+        const [notesRes, callRes] = await Promise.all([
+          supabase
+            .from('notes')
+            .select('*')
+            .eq('client_id', client.id)
+            .eq('is_shared', true)
+            .order('is_pinned', { ascending: false })
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('call_logs')
+            .select('*')
+            .eq('client_id', client.id)
+            .order('call_date', { ascending: false })
+        ])
 
-      setNotes(notesRes.data || [])
-      setCallLogs(callRes.data || [])
+        setNotes(notesRes.data || [])
+        setCallLogs(callRes.data || [])
 
-      // Load AI reviews for calls
-      if (callRes.data?.length > 0) {
-        const callIds = callRes.data.map(c => c.id)
-        const { data: reviewsData } = await supabase
-          .from('ai_call_reviews')
-          .select('call_log_id, summary, key_moments')
-          .in('call_log_id', callIds)
+        // Load AI reviews for calls
+        if (callRes.data?.length > 0) {
+          const callIds = callRes.data.map(c => c.id)
+          const { data: reviewsData } = await supabase
+            .from('ai_call_reviews')
+            .select('call_log_id, summary, key_moments')
+            .in('call_log_id', callIds)
 
-        if (reviewsData) {
-          const map = {}
-          reviewsData.forEach(r => { map[r.call_log_id] = r })
-          setAiReviews(map)
+          if (reviewsData) {
+            const map = {}
+            reviewsData.forEach(r => { map[r.call_log_id] = r })
+            setAiReviews(map)
+          }
+
+          // Auto-expand most recent
+          if (callRes.data[0]) setExpandedCall(callRes.data[0].id)
         }
-
-        // Auto-expand most recent
-        if (callRes.data[0]) setExpandedCall(callRes.data[0].id)
       }
+    } catch (err) {
+      console.error('Load notes error:', err)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   if (loading) {

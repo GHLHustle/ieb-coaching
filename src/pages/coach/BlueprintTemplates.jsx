@@ -32,13 +32,18 @@ export function BlueprintTemplates() {
   }, [user])
 
   async function loadTemplates() {
-    const { data } = await supabase
-      .from('blueprint_templates')
-      .select('*')
-      .eq('created_by', user.id)
-      .order('created_at', { ascending: false })
-    setTemplates(data || [])
-    setLoading(false)
+    try {
+      const { data } = await supabase
+        .from('blueprint_templates')
+        .select('*')
+        .eq('created_by', user.id)
+        .order('created_at', { ascending: false })
+      setTemplates(data || [])
+    } catch (err) {
+      console.error('Load templates error:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function loadClients() {

@@ -33,25 +33,30 @@ export function Settings() {
   useEffect(() => { loadSettings() }, [user])
 
   async function loadSettings() {
-    const { data } = await supabase
-      .from('coach_settings')
-      .select('*')
-      .eq('coach_id', user.id)
-      .single()
+    try {
+      const { data } = await supabase
+        .from('coach_settings')
+        .select('*')
+        .eq('coach_id', user.id)
+        .single()
 
-    if (data) {
-      setForm({
-        ghl_api_key: data.ghl_api_key || '',
-        ghl_location_id: data.ghl_location_id || data.ghl_subaccount_id || '',
-        google_calendar_url: data.google_calendar_url || '',
-        timezone: data.timezone || 'America/New_York',
-      })
-      if (data.ghl_api_key && (data.ghl_location_id || data.ghl_subaccount_id)) {
-        setGhlStatus('connected')
+      if (data) {
+        setForm({
+          ghl_api_key: data.ghl_api_key || '',
+          ghl_location_id: data.ghl_location_id || data.ghl_subaccount_id || '',
+          google_calendar_url: data.google_calendar_url || '',
+          timezone: data.timezone || 'America/New_York',
+        })
+        if (data.ghl_api_key && (data.ghl_location_id || data.ghl_subaccount_id)) {
+          setGhlStatus('connected')
+        }
       }
+      setProfileForm({ full_name: profile?.full_name || '' })
+    } catch (err) {
+      console.error('Load settings error:', err)
+    } finally {
+      setLoading(false)
     }
-    setProfileForm({ full_name: profile?.full_name || '' })
-    setLoading(false)
   }
 
   async function saveSettings(e) {
@@ -59,27 +64,32 @@ export function Settings() {
     setSaving(true)
     setSaved(false)
 
-    const { error } = await supabase
-      .from('coach_settings')
-      .upsert({
-        coach_id: user.id,
-        ghl_api_key: form.ghl_api_key,
-        ghl_location_id: form.ghl_location_id,
-        ghl_subaccount_id: form.ghl_location_id,
-        google_calendar_url: form.google_calendar_url,
-        timezone: form.timezone,
-      }, { onConflict: 'coach_id' })
+    try {
+      const { error } = await supabase
+        .from('coach_settings')
+        .upsert({
+          coach_id: user.id,
+          ghl_api_key: form.ghl_api_key,
+          ghl_location_id: form.ghl_location_id,
+          ghl_subaccount_id: form.ghl_location_id,
+          google_calendar_url: form.google_calendar_url,
+          timezone: form.timezone,
+        }, { onConflict: 'coach_id' })
 
-    await supabase
-      .from('profiles')
-      .update({ full_name: profileForm.full_name })
-      .eq('id', user.id)
+      await supabase
+        .from('profiles')
+        .update({ full_name: profileForm.full_name })
+        .eq('id', user.id)
 
-    if (!error) {
-      setSaved(true)
-      setTimeout(() => setSaved(false), 3000)
+      if (!error) {
+        setSaved(true)
+        setTimeout(() => setSaved(false), 3000)
+      }
+    } catch (err) {
+      console.error('Save settings error:', err)
+    } finally {
+      setSaving(false)
     }
-    setSaving(false)
   }
 
   async function testGhlConnection() {
@@ -93,24 +103,31 @@ export function Settings() {
     setGhlStatus(null)
     setGhlError('')
 
-    // Save first so the edge function can read them
-    await supabase.from('coach_settings').upsert({
-      coach_id: user.id,
-      ghl_api_key: form.ghl_api_key,
-      ghl_location_id: form.ghl_location_id,
-      ghl_subaccount_id: form.ghl_location_id,
-      timezone: form.timezone,
-    }, { onConflict: 'coach_id' })
+    try {
+      // Save first so the edge function can read them
+      await supabase.from('coach_settings').upsert({
+        coach_id: user.id,
+        ghl_api_key: form.ghl_api_key,
+        ghl_location_id: form.ghl_location_id,
+        ghl_subaccount_id: form.ghl_location_id,
+        timezone: form.timezone,
+      }, { onConflict: 'coach_id' })
 
-    const { data, error } = await invokeGHL('testConnection')
+      const { data, error } = await invokeGHL('testConnection')
 
-    if (error || data?.error) {
+      if (error || data?.error) {
+        setGhlStatus('error')
+        setGhlError(data?.error || error?.message || 'Connection failed. The GHL proxy function may not be deployed yet.')
+      } else {
+        setGhlStatus('connected')
+      }
+    } catch (err) {
+      console.error('GHL test error:', err)
       setGhlStatus('error')
-      setGhlError(data?.error || error?.message || 'Connection failed')
-    } else {
-      setGhlStatus('connected')
+      setGhlError('Connection test failed — the GHL proxy function may not be deployed. Settings are still saved.')
+    } finally {
+      setTesting(false)
     }
-    setTesting(false)
   }
 
   if (loading) {

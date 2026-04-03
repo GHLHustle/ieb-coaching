@@ -26,14 +26,19 @@ export function Resources() {
   async function loadResources() {
     if (!user) return
     setLoading(true)
-    const { data } = await supabase
-      .from('resources')
-      .select('*')
-      .eq('coach_id', user.id)
-      .order('division')
-      .order('sort_order')
-    setResources(data || [])
-    setLoading(false)
+    try {
+      const { data } = await supabase
+        .from('resources')
+        .select('*')
+        .eq('coach_id', user.id)
+        .order('division')
+        .order('sort_order')
+      setResources(data || [])
+    } catch (err) {
+      console.error('Load resources error:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function handleAdd() {

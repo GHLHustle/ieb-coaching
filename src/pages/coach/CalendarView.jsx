@@ -17,27 +17,32 @@ export function CalendarView() {
   useEffect(() => { loadData() }, [user])
 
   async function loadData() {
-    // Get calendar URL from settings
-    const { data: settings } = await supabase
-      .from('coach_settings')
-      .select('google_calendar_url')
-      .eq('coach_id', user.id)
-      .single()
+    try {
+      // Get calendar URL from settings
+      const { data: settings } = await supabase
+        .from('coach_settings')
+        .select('google_calendar_url')
+        .eq('coach_id', user.id)
+        .single()
 
-    if (settings?.google_calendar_url) {
-      setCalendarUrl(settings.google_calendar_url)
+      if (settings?.google_calendar_url) {
+        setCalendarUrl(settings.google_calendar_url)
+      }
+
+      // Get recent call logs with client names
+      const { data: calls } = await supabase
+        .from('call_logs')
+        .select('*, clients(first_name, last_name)')
+        .eq('coach_id', user.id)
+        .order('call_date', { ascending: false })
+        .limit(15)
+
+      setRecentCalls(calls || [])
+    } catch (err) {
+      console.error('Load data error:', err)
+    } finally {
+      setLoading(false)
     }
-
-    // Get recent call logs with client names
-    const { data: calls } = await supabase
-      .from('call_logs')
-      .select('*, clients(first_name, last_name)')
-      .eq('coach_id', user.id)
-      .order('call_date', { ascending: false })
-      .limit(15)
-
-    setRecentCalls(calls || [])
-    setLoading(false)
   }
 
   if (loading) {

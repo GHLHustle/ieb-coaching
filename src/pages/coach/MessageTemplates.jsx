@@ -25,13 +25,18 @@ export function MessageTemplates() {
   }, [user])
 
   async function loadTemplates() {
-    const { data } = await supabase
-      .from('message_templates')
-      .select('*')
-      .eq('coach_id', user.id)
-      .order('created_at', { ascending: false })
-    setTemplates(data || [])
-    setLoading(false)
+    try {
+      const { data } = await supabase
+        .from('message_templates')
+        .select('*')
+        .eq('coach_id', user.id)
+        .order('created_at', { ascending: false })
+      setTemplates(data || [])
+    } catch (err) {
+      console.error('Load templates error:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   function openNew() {

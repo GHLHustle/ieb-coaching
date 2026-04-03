@@ -16,25 +16,29 @@ export function ClientResources() {
   async function loadResources() {
     if (!user) return
     setLoading(true)
+    try {
+      // Find client record to get coach_id
+      const { data: clientData } = await supabase
+        .from('clients')
+        .select('coach_id')
+        .eq('user_id', user.id)
+        .single()
 
-    // Find client record to get coach_id
-    const { data: clientData } = await supabase
-      .from('clients')
-      .select('coach_id')
-      .eq('user_id', user.id)
-      .single()
-
-    if (clientData) {
-      const { data } = await supabase
-        .from('resources')
-        .select('*')
-        .eq('coach_id', clientData.coach_id)
-        .eq('is_visible_to_clients', true)
-        .order('division')
-        .order('sort_order')
-      setResources(data || [])
+      if (clientData) {
+        const { data } = await supabase
+          .from('resources')
+          .select('*')
+          .eq('coach_id', clientData.coach_id)
+          .eq('is_visible_to_clients', true)
+          .order('division')
+          .order('sort_order')
+        setResources(data || [])
+      }
+    } catch (err) {
+      console.error('Load resources error:', err)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   if (loading) {

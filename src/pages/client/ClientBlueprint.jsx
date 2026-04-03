@@ -16,22 +16,28 @@ export function ClientBlueprint() {
   }, [user])
 
   async function loadMilestones() {
-    const { data: client } = await supabase
-      .from('clients')
-      .select('id')
-      .eq('user_id', user.id)
-      .single()
+    setLoading(true)
+    try {
+      const { data: client } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('user_id', user.id)
+        .single()
 
-    if (client) {
-      const { data } = await supabase
-        .from('milestones')
-        .select('*')
-        .eq('client_id', client.id)
-        .order('division')
-        .order('sort_order')
-      setMilestones(data || [])
+      if (client) {
+        const { data } = await supabase
+          .from('milestones')
+          .select('*')
+          .eq('client_id', client.id)
+          .order('division')
+          .order('sort_order')
+        setMilestones(data || [])
+      }
+    } catch (err) {
+      console.error('Load milestones error:', err)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   const statusIcon = (status) => {

@@ -36,27 +36,31 @@ export function ClientIntakeForm() {
   async function loadExisting() {
     if (!user) return
     setLoading(true)
-
-    // Find client record for this user
-    const { data: clientData } = await supabase
-      .from('clients')
-      .select('id')
-      .eq('user_id', user.id)
-      .single()
-
-    if (clientData) {
-      const { data: intake } = await supabase
-        .from('intake_responses')
-        .select('*')
-        .eq('client_id', clientData.id)
+    try {
+      // Find client record for this user
+      const { data: clientData } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('user_id', user.id)
         .single()
 
-      if (intake) {
-        setForm(intake)
-        setHasExisting(true)
+      if (clientData) {
+        const { data: intake } = await supabase
+          .from('intake_responses')
+          .select('*')
+          .eq('client_id', clientData.id)
+          .single()
+
+        if (intake) {
+          setForm(intake)
+          setHasExisting(true)
+        }
       }
+    } catch (err) {
+      console.error('Load existing error:', err)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   async function handleSubmit(e) {

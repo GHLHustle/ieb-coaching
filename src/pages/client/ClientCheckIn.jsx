@@ -25,28 +25,34 @@ export function ClientCheckIn() {
   }, [user])
 
   async function loadData() {
-    const { data: clientData } = await supabase
-      .from('clients')
-      .select('*')
-      .eq('user_id', user.id)
-      .single()
-
-    if (clientData) {
-      setClient(clientData)
-
-      const { data: existing } = await supabase
-        .from('confidence_checkins')
+    setLoading(true)
+    try {
+      const { data: clientData } = await supabase
+        .from('clients')
         .select('*')
-        .eq('client_id', clientData.id)
-        .eq('week_start_date', weekStart)
+        .eq('user_id', user.id)
         .single()
 
-      if (existing) {
-        setExistingCheckin(existing)
-        setSubmitted(true)
+      if (clientData) {
+        setClient(clientData)
+
+        const { data: existing } = await supabase
+          .from('confidence_checkins')
+          .select('*')
+          .eq('client_id', clientData.id)
+          .eq('week_start_date', weekStart)
+          .single()
+
+        if (existing) {
+          setExistingCheckin(existing)
+          setSubmitted(true)
+        }
       }
+    } catch (err) {
+      console.error('Load data error:', err)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   async function handleSubmit(e) {
