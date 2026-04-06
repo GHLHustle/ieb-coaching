@@ -102,6 +102,12 @@ export function AuthProvider({ children }) {
   async function signIn(email, password) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw error
+    // Start profile fetch immediately — don't wait for onAuthStateChange to trickle through.
+    // fetchingRef guards against the duplicate call when SIGNED_IN event fires.
+    if (data.user) {
+      setUser(data.user)
+      fetchProfile(data.user.id)
+    }
     return data
   }
 
