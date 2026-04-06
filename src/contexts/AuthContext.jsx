@@ -13,23 +13,32 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let mounted = true
 
-    // Safety timeout — tightened from 8s to 4s
-    const timeout = setTimeout(() => {
-      if (mounted) {
-        console.warn('Auth timeout - forcing loading to false')
+    // Step 1: getSession() reads from localStorage — resolves in ~1ms.
+    // This makes the login page appear immediately for unauthenticated users,
+    // and kicks off fetchProfile right away for returning logged-in users.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return
+      if (session?.user) {
+        setUser(session.user)
+        fetchProfile(session.user.id)
+      } else {
+        // No session — show login page immediately, no spinner
         setLoading(false)
       }
-    }, 4000)
+    }).catch(() => {
+      if (mounted) setLoading(false)
+    })
 
-    // onAuthStateChange fires INITIAL_SESSION immediately with the persisted
-    // session (or null), so we no longer need a separate getSession() call.
-    // This removes the race condition where both could trigger fetchProfile.
+    // Step 2: onAuthStateChange handles SUBSEQUENT events only
+    // (login, logout, token refresh). We skip INITIAL_SESSION because
+    // getSession() above already handled it, preventing a double fetchProfile.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return
+      // Skip the initial session replay — already handled above
+      if (event === 'INITIAL_SESSION') return
 
       if (session?.user) {
         setUser(session.user)
-        // Guard against duplicate fetches on rapid token refresh events
         if (!fetchingRef.current) {
           await fetchProfile(session.user.id)
         }
@@ -42,7 +51,6 @@ export function AuthProvider({ children }) {
 
     return () => {
       mounted = false
-      clearTimeout(timeout)
       subscription.unsubscribe()
     }
   }, [])
