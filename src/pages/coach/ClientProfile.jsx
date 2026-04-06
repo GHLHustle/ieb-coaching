@@ -86,18 +86,23 @@ export function ClientProfile() {
 
   async function loadClient() {
     setLoading(true)
-    const { data: clientData } = await supabase
-      .from('clients')
-      .select('*')
-      .eq('id', clientId)
-      .single()
+    try {
+      const { data: clientData } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('id', clientId)
+        .single()
 
-    if (clientData) {
-      setClient(clientData)
-      setDriveUrl(clientData.google_drive_url || '')
-      await Promise.all([loadNotes(), loadMilestones(), loadCheckins(), loadMessages(), loadCallLogs(), loadActionItems(), loadSessionTemplates()])
+      if (clientData) {
+        setClient(clientData)
+        setDriveUrl(clientData.google_drive_url || '')
+        await Promise.all([loadNotes(), loadMilestones(), loadCheckins(), loadMessages(), loadCallLogs(), loadActionItems(), loadSessionTemplates()])
+      }
+    } catch (err) {
+      console.error('Error loading client:', err)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   async function loadNotes() {

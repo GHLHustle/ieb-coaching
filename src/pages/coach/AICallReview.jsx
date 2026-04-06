@@ -92,22 +92,24 @@ export function AICallReview() {
   async function loadData() {
     setLoading(true)
     setError(null)
+    try {
+      if (callLogId) {
+        const { data: call } = await supabase
+          .from('call_logs')
+          .select('*, clients(full_name)')
+          .eq('id', callLogId)
+          .single()
+        setCallLog(call)
+        setClientName(call?.clients?.full_name || '')
 
-    // Load call log
-    if (callLogId) {
-      const { data: call } = await supabase
-        .from('call_logs')
-        .select('*, clients(full_name)')
-        .eq('id', callLogId)
-        .single()
-      setCallLog(call)
-      setClientName(call?.clients?.full_name || '')
-
-      // Load existing review
-      const existing = await fetchReview(callLogId)
-      setReview(existing)
+        const existing = await fetchReview(callLogId)
+        setReview(existing)
+      }
+    } catch (err) {
+      console.error('Error loading call review:', err)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   async function handleAnalyze() {

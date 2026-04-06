@@ -37,24 +37,29 @@ export function ClientIntake() {
 
   async function loadData() {
     setLoading(true)
-    const { data: clientData } = await supabase
-      .from('clients')
-      .select('*')
-      .eq('id', clientId)
-      .single()
-    setClient(clientData)
+    try {
+      const { data: clientData } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('id', clientId)
+        .single()
+      setClient(clientData)
 
-    const { data: intake } = await supabase
-      .from('intake_responses')
-      .select('*')
-      .eq('client_id', clientId)
-      .single()
+      const { data: intake } = await supabase
+        .from('intake_responses')
+        .select('*')
+        .eq('client_id', clientId)
+        .single()
 
-    if (intake) {
-      setForm(intake)
-      setHasExisting(true)
+      if (intake) {
+        setForm(intake)
+        setHasExisting(true)
+      }
+    } catch (err) {
+      console.error('Error loading intake:', err)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   async function handleSave() {

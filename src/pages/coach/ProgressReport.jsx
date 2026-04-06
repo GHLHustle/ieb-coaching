@@ -18,19 +18,24 @@ export function ProgressReport() {
 
   async function loadAll() {
     setLoading(true)
-    const [clientRes, checkinsRes, callsRes, actionsRes, milestonesRes] = await Promise.all([
-      supabase.from('clients').select('*').eq('id', clientId).single(),
-      supabase.from('confidence_checkins').select('*').eq('client_id', clientId).order('created_at', { ascending: false }),
-      supabase.from('call_logs').select('*').eq('client_id', clientId).order('call_date', { ascending: false }),
-      supabase.from('action_items').select('*').eq('client_id', clientId).order('due_date'),
-      supabase.from('milestones').select('*').eq('client_id', clientId).order('due_date'),
-    ])
-    setClient(clientRes.data)
-    setCheckins(checkinsRes.data || [])
-    setCallLogs(callsRes.data || [])
-    setActionItems(actionsRes.data || [])
-    setMilestones(milestonesRes.data || [])
-    setLoading(false)
+    try {
+      const [clientRes, checkinsRes, callsRes, actionsRes, milestonesRes] = await Promise.all([
+        supabase.from('clients').select('*').eq('id', clientId).single(),
+        supabase.from('confidence_checkins').select('*').eq('client_id', clientId).order('created_at', { ascending: false }),
+        supabase.from('call_logs').select('*').eq('client_id', clientId).order('call_date', { ascending: false }),
+        supabase.from('action_items').select('*').eq('client_id', clientId).order('due_date'),
+        supabase.from('milestones').select('*').eq('client_id', clientId).order('due_date'),
+      ])
+      setClient(clientRes.data)
+      setCheckins(checkinsRes.data || [])
+      setCallLogs(callsRes.data || [])
+      setActionItems(actionsRes.data || [])
+      setMilestones(milestonesRes.data || [])
+    } catch (err) {
+      console.error('Error loading progress report:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   if (loading) {
