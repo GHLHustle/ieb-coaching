@@ -49,9 +49,9 @@ export function ProgressReport() {
   if (!client) return <p className="text-center text-gray-500 py-12">Client not found.</p>
 
   const latestCheckin = checkins[0]
-  const completedActions = actionItems.filter(a => a.is_completed).length
+  const completedActions = actionItems.filter(a => a.status === 'complete' || a.is_completed).length
   const totalActions = actionItems.length
-  const completedMilestones = milestones.filter(m => m.is_completed).length
+  const completedMilestones = milestones.filter(m => m.status === 'complete' || m.is_completed).length
 
   return (
     <div>
@@ -141,15 +141,18 @@ export function ProgressReport() {
           <div className="mb-8">
             <h3 className="text-lg font-semibold text-navy mb-3">Action Items</h3>
             <div className="space-y-2">
-              {actionItems.map(item => (
+              {actionItems.map(item => {
+                const done = item.status === 'complete' || item.is_completed
+                return (
                 <div key={item.id} className="flex items-start gap-2 text-sm">
-                  <span className={item.is_completed ? 'text-green-600' : 'text-gray-400'}>{item.is_completed ? '✓' : '○'}</span>
+                  <span className={done ? 'text-green-600' : 'text-gray-400'}>{done ? '✓' : '○'}</span>
                   <div>
-                    <span className={item.is_completed ? 'line-through text-gray-400' : 'text-gray-700'}>{item.title}</span>
+                    <span className={done ? 'line-through text-gray-400' : 'text-gray-700'}>{item.title}</span>
                     {item.due_date && <span className="text-xs text-gray-400 ml-2">Due: {formatDate(item.due_date)}</span>}
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         )}
@@ -159,15 +162,18 @@ export function ProgressReport() {
           <div className="mb-8">
             <h3 className="text-lg font-semibold text-navy mb-3">Milestones</h3>
             <div className="space-y-2">
-              {milestones.map(m => (
+              {milestones.map(m => {
+                const done = m.status === 'complete' || m.is_completed
+                return (
                 <div key={m.id} className="flex items-start gap-2 text-sm">
-                  <span className={m.is_completed ? 'text-green-600' : 'text-gray-400'}>{m.is_completed ? '✓' : '○'}</span>
+                  <span className={done ? 'text-green-600' : 'text-gray-400'}>{done ? '✓' : '○'}</span>
                   <div>
-                    <span className={m.is_completed ? 'line-through text-gray-400' : 'text-gray-700'}>{m.title}</span>
+                    <span className={done ? 'line-through text-gray-400' : 'text-gray-700'}>{m.title}</span>
                     {m.due_date && <span className="text-xs text-gray-400 ml-2">Due: {formatDate(m.due_date)}</span>}
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         )}

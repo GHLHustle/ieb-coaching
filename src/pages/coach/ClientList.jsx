@@ -47,9 +47,6 @@ export function ClientList() {
     e.preventDefault()
     setSaving(true)
     try {
-      // Create auth user for the client
-      const tempPassword = Math.random().toString(36).slice(-12) + 'A1!'
-
       const { data, error } = await supabase
         .from('clients')
         .insert({

@@ -80,7 +80,7 @@ export function CoachingInsights() {
       <div className="flex items-center justify-between">
         <div>
           <Link to={`/coach/clients/${clientId}`} className="text-sm text-navy hover:underline flex items-center gap-1 mb-1">
-            <ArrowLeft className="w-4 h-4" /> Back to {client?.full_name || 'Client'}
+            <ArrowLeft className="w-4 h-4" /> Back to {client?.first_name ? `${client.first_name} ${client.last_name}` : 'Client'}
           </Link>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Sparkles className="w-6 h-6 text-purple-600" />

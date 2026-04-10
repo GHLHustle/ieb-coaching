@@ -13,6 +13,15 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let mounted = true
 
+    // Safety timeout: if loading hasn't resolved in 10 seconds, clear it.
+    // Prevents infinite spinners when Supabase is unreachable.
+    const safetyTimer = setTimeout(() => {
+      if (mounted && loading) {
+        console.warn('Auth loading timed out after 10s — clearing spinner')
+        setLoading(false)
+      }
+    }, 10000)
+
     // Step 1: getSession() reads from localStorage — resolves in ~1ms.
     // This makes the login page appear immediately for unauthenticated users,
     // and kicks off fetchProfile right away for returning logged-in users.
@@ -51,6 +60,7 @@ export function AuthProvider({ children }) {
 
     return () => {
       mounted = false
+      clearTimeout(safetyTimer)
       subscription.unsubscribe()
     }
   }, [])
@@ -92,7 +102,12 @@ export function AuthProvider({ children }) {
         return
       }
 
-      // Some other fetch error — still clear loading
+      // Some other fetch error — still clear loading so the app doesn't spin forever
+      console.error('Profile fetch error:', error)
+      setLoading(false)
+    } catch (err) {
+      // Network error or unexpected failure — MUST clear loading to prevent infinite spinner
+      console.error('Unexpected error fetching profile:', err)
       setLoading(false)
     } finally {
       fetchingRef.current = false

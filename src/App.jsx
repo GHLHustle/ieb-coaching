@@ -3,33 +3,69 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 
 // Eagerly load only what's needed for the login/auth flow
 import { LoginPage } from '@/pages/LoginPage'
 import { CoachLayout } from '@/layouts/CoachLayout'
 import { ClientLayout } from '@/layouts/ClientLayout'
 
-// Lazy-load all page components — each becomes its own JS chunk
-const CoachDashboard = lazy(() => import('@/pages/coach/CoachDashboard').then(m => ({ default: m.CoachDashboard })))
-const ClientList = lazy(() => import('@/pages/coach/ClientList').then(m => ({ default: m.ClientList })))
-const ClientProfile = lazy(() => import('@/pages/coach/ClientProfile').then(m => ({ default: m.ClientProfile })))
-const BlueprintTemplates = lazy(() => import('@/pages/coach/BlueprintTemplates').then(m => ({ default: m.BlueprintTemplates })))
-const MessageTemplates = lazy(() => import('@/pages/coach/MessageTemplates').then(m => ({ default: m.MessageTemplates })))
-const Settings = lazy(() => import('@/pages/coach/Settings').then(m => ({ default: m.Settings })))
-const Pipelines = lazy(() => import('@/pages/coach/Pipelines').then(m => ({ default: m.Pipelines })))
-const CalendarView = lazy(() => import('@/pages/coach/CalendarView').then(m => ({ default: m.CalendarView })))
-const ClientIntake = lazy(() => import('@/pages/coach/ClientIntake').then(m => ({ default: m.ClientIntake })))
-const ProgressReport = lazy(() => import('@/pages/coach/ProgressReport').then(m => ({ default: m.ProgressReport })))
-const Resources = lazy(() => import('@/pages/coach/Resources').then(m => ({ default: m.Resources })))
-const AICallReview = lazy(() => import('@/pages/coach/AICallReview').then(m => ({ default: m.AICallReview })))
-const CoachingInsights = lazy(() => import('@/pages/coach/CoachingInsights').then(m => ({ default: m.CoachingInsights })))
-const ClientDashboard = lazy(() => import('@/pages/client/ClientDashboard').then(m => ({ default: m.ClientDashboard })))
-const ClientCallSummaries = lazy(() => import('@/pages/client/ClientCallSummaries').then(m => ({ default: m.ClientCallSummaries })))
-const ClientBlueprint = lazy(() => import('@/pages/client/ClientBlueprint').then(m => ({ default: m.ClientBlueprint })))
-const ClientCheckIn = lazy(() => import('@/pages/client/ClientCheckIn').then(m => ({ default: m.ClientCheckIn })))
-const ClientNotes = lazy(() => import('@/pages/client/ClientNotes').then(m => ({ default: m.ClientNotes })))
-const ClientIntakeForm = lazy(() => import('@/pages/client/ClientIntakeForm').then(m => ({ default: m.ClientIntakeForm })))
-const ClientResources = lazy(() => import('@/pages/client/ClientResources').then(m => ({ default: m.ClientResources })))
+/**
+ * Lazy-load with automatic retry.
+ * After a deploy, old chunk URLs 404. This retries once after a short delay
+ * and forces a full page reload if the retry also fails — clearing the stale
+ * module cache so the user gets the latest version instead of an infinite spinner.
+ */
+function lazyRetry(importFn, namedExport) {
+  return lazy(() =>
+    importFn()
+      .then(m => ({ default: namedExport ? m[namedExport] : m.default }))
+      .catch(() => {
+        // First retry after a short delay
+        return new Promise(resolve => setTimeout(resolve, 1500))
+          .then(() => importFn())
+          .then(m => ({ default: namedExport ? m[namedExport] : m.default }))
+          .catch(() => {
+            // Chunk is truly gone (new deploy) — reload the page to get fresh HTML
+            // Use sessionStorage flag to prevent reload loops
+            const hasReloaded = sessionStorage.getItem('chunk-reload')
+            if (!hasReloaded) {
+              sessionStorage.setItem('chunk-reload', '1')
+              window.location.reload()
+            }
+            // If we already reloaded, show the error to the ErrorBoundary
+            throw new Error('Failed to load page. Please refresh your browser.')
+          })
+      })
+  )
+}
+
+// Lazy-load all page components with retry logic
+const CoachDashboard = lazyRetry(() => import('@/pages/coach/CoachDashboard'), 'CoachDashboard')
+const ClientList = lazyRetry(() => import('@/pages/coach/ClientList'), 'ClientList')
+const ClientProfile = lazyRetry(() => import('@/pages/coach/ClientProfile'), 'ClientProfile')
+const BlueprintTemplates = lazyRetry(() => import('@/pages/coach/BlueprintTemplates'), 'BlueprintTemplates')
+const MessageTemplates = lazyRetry(() => import('@/pages/coach/MessageTemplates'), 'MessageTemplates')
+const Settings = lazyRetry(() => import('@/pages/coach/Settings'), 'Settings')
+const Pipelines = lazyRetry(() => import('@/pages/coach/Pipelines'), 'Pipelines')
+const CalendarView = lazyRetry(() => import('@/pages/coach/CalendarView'), 'CalendarView')
+const ClientIntake = lazyRetry(() => import('@/pages/coach/ClientIntake'), 'ClientIntake')
+const ProgressReport = lazyRetry(() => import('@/pages/coach/ProgressReport'), 'ProgressReport')
+const Resources = lazyRetry(() => import('@/pages/coach/Resources'), 'Resources')
+const AICallReview = lazyRetry(() => import('@/pages/coach/AICallReview'), 'AICallReview')
+const CoachingInsights = lazyRetry(() => import('@/pages/coach/CoachingInsights'), 'CoachingInsights')
+const ClientDashboard = lazyRetry(() => import('@/pages/client/ClientDashboard'), 'ClientDashboard')
+const ClientCallSummaries = lazyRetry(() => import('@/pages/client/ClientCallSummaries'), 'ClientCallSummaries')
+const ClientBlueprint = lazyRetry(() => import('@/pages/client/ClientBlueprint'), 'ClientBlueprint')
+const ClientCheckIn = lazyRetry(() => import('@/pages/client/ClientCheckIn'), 'ClientCheckIn')
+const ClientNotes = lazyRetry(() => import('@/pages/client/ClientNotes'), 'ClientNotes')
+const ClientIntakeForm = lazyRetry(() => import('@/pages/client/ClientIntakeForm'), 'ClientIntakeForm')
+const ClientResources = lazyRetry(() => import('@/pages/client/ClientResources'), 'ClientResources')
+
+// Clear the reload flag on successful page load
+if (typeof sessionStorage !== 'undefined') {
+  sessionStorage.removeItem('chunk-reload')
+}
 
 // Minimal spinner shown while a lazy chunk loads
 function PageLoader() {
@@ -42,7 +78,12 @@ function PageLoader() {
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { staleTime: 1000 * 60, retry: 1 },
+    queries: {
+      staleTime: 1000 * 60,
+      retry: 1,
+      // Don't refetch on window focus — prevents re-fetches that can cause flickering
+      refetchOnWindowFocus: false,
+    },
   },
 })
 
@@ -94,12 +135,14 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <AuthProvider>
-          <AppRoutes />
-        </AuthProvider>
-      </BrowserRouter>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <AuthProvider>
+            <AppRoutes />
+          </AuthProvider>
+        </BrowserRouter>
+      </QueryClientProvider>
+    </ErrorBoundary>
   )
 }

@@ -96,7 +96,7 @@ export function ClientIntake() {
         </Link>
         <div>
           <h1 className="text-2xl font-bold text-navy">Intake Form</h1>
-          <p className="text-sm text-gray-500">{client?.full_name}</p>
+          <p className="text-sm text-gray-500">{client?.first_name} {client?.last_name}</p>
         </div>
       </div>
 

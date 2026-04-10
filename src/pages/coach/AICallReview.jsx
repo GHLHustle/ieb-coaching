@@ -96,11 +96,11 @@ export function AICallReview() {
       if (callLogId) {
         const { data: call } = await supabase
           .from('call_logs')
-          .select('*, clients(full_name)')
+          .select('*, clients(first_name, last_name)')
           .eq('id', callLogId)
           .single()
         setCallLog(call)
-        setClientName(call?.clients?.full_name || '')
+        setClientName(call?.clients ? `${call.clients.first_name} ${call.clients.last_name}` : '')
 
         const existing = await fetchReview(callLogId)
         setReview(existing)
